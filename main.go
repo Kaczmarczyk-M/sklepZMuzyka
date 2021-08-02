@@ -12,7 +12,7 @@ import (
 )
 
 type Album struct {
-	ID     int64
+	ID     int32
 	Title  string
 	Artist string
 	Price  float64
@@ -74,13 +74,17 @@ func addAlbum(alb Album) (int64, error) {
 	return id, nil
 }
 
+//reading values from STDIN
 func reader() Album {
 	var a Album
 	reader := bufio.NewReader(os.Stdin)
+	fmt.Println("Title:")
 	Title1, _, _ := reader.ReadLine()
 	a.Title = string(Title1)
+	fmt.Println("Artist:")
 	Artist1, _, _ := reader.ReadLine()
 	a.Artist = string(Artist1)
+	fmt.Println("Price:")
 	Price1, _, _ := reader.ReadLine()
 	a.Price, _ = strconv.ParseFloat(string(Price1), 64)
 
@@ -121,22 +125,12 @@ func main() {
 	}
 	fmt.Printf("Album found: %v\n", alb)
 
-	// albID, err := addAlbum(Album{
-	// 	Title:  "The Modern Sound of Betty Carter",
-	// 	Artist: "Betty Carter",
-	// 	Price:  49.99,
-	// })
-	// if err != nil {
-	// 	log.Fatal(err)
-	// }
-	// fmt.Printf("ID of added album: %v\n", albID)
-
-	// _, err := addAlbum(funkcja())
-
+	// Filling database with data from stdin
 	albID, err := addAlbum(reader())
 	if err != nil {
 		log.Fatal(err)
 	}
+	//prints last ID from db
 	fmt.Println(albID)
 
 }
