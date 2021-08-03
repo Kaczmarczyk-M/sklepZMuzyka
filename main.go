@@ -24,7 +24,6 @@ var db *sql.DB
 func albumsByArtist(name string) ([]Album, error) {
 	// An albums slice to hold data from returned rows.
 	var albums []Album
-
 	rows, err := db.Query("SELECT * FROM album WHERE artist = ?", name)
 	if err != nil {
 		return nil, fmt.Errorf("albumsByArtist %q: %v", name, err)
@@ -42,7 +41,6 @@ func albumsByArtist(name string) ([]Album, error) {
 		return nil, fmt.Errorf("albumsByArtist %q: %v", name, err)
 	}
 	return albums, nil
-
 }
 
 // albumByID queries for the album with the specified ID.
@@ -91,7 +89,8 @@ func reader() Album {
 	return a
 }
 
-func main() {
+//connecting to DB
+func connectWithDB() {
 	// Capture connection properties.
 	cfg := mysql.Config{
 		User:   "newuser",
@@ -112,6 +111,11 @@ func main() {
 		log.Fatal(pingErr)
 	}
 	fmt.Println("Connected!")
+}
+
+func main() {
+	//connecting to DB
+	connectWithDB()
 
 	// Filling database with data from stdin
 	albID, err := addAlbum(reader())
