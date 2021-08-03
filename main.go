@@ -3,8 +3,10 @@ package main
 import (
 	"bufio"
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"log"
+	"net/http"
 	"os"
 	"strconv"
 
@@ -12,13 +14,15 @@ import (
 )
 
 type Album struct {
-	ID     int32
-	Title  string
-	Artist string
-	Price  float64
+	ID     int32   `json:"ID"`
+	Title  string  `json:"Title"`
+	Artist string  `json:"Artist"`
+	Price  float64 `json:"Price"`
 }
 
 var db *sql.DB
+
+// var albums []Album
 
 // albumsByArtist queries for albums that have the specified artist name.
 func albumsByArtist(name string) ([]Album, error) {
@@ -113,16 +117,55 @@ func connectWithDB() {
 	fmt.Println("Connected!")
 }
 
+func handleRequests() {
+	http.HandleFunc("/", homePage)
+	http.HandleFunc("/albums", returnAllAlbums)
+	log.Fatal(http.ListenAndServe(":8080", nil))
+}
+
+func homePage(w http.ResponseWriter, r *http.Request) {
+	fmt.Fprintf(w, "Welcome!")
+	fmt.Println("Endpoint: Home Page")
+}
+
+func returnAllAlbums(w http.ResponseWriter, r *http.Request) {
+	// An albums slice to hold data from returned rows.
+	var albums []Album
+	rows, err := db.Query("SELECT * FROM album;")
+	if err != nil {
+		_ = fmt.Errorf("returnAllAlbums: %v", err)
+		return
+	}
+	defer rows.Close()
+	// Loop through rows, using Scan to assign column data to struct fields.
+	for rows.Next() {
+		var alb Album
+		if err := rows.Scan(&alb.ID, &alb.Title, &alb.Artist, &alb.Price); err != nil {
+			_ = fmt.Errorf("returnAllAlbums: %v", err)
+			return
+		}
+		albums = append(albums, alb)
+	}
+	if err := rows.Err(); err != nil {
+		_ = fmt.Errorf("returnAllAlbums: %v", err)
+		return
+	}
+
+	json.NewEncoder(w).Encode(albums)
+}
 func main() {
 	//connecting to DB
 	connectWithDB()
 
-	// Filling database with data from stdin
-	albID, err := addAlbum(reader())
-	if err != nil {
-		log.Fatal(err)
-	}
-	//prints last ID from db
-	fmt.Println(albID)
+	//starting server
+	handleRequests()
+
+	// // Filling database with data from stdin
+	// albID, err := addAlbum(reader())
+	// if err != nil {
+	// 	log.Fatal(err)
+	// }
+	// //prints last ID from db
+	// fmt.Println(albID)
 
 }
