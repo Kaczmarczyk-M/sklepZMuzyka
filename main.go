@@ -121,7 +121,8 @@ func connectWithDB() {
 func handleRequests() {
 	myRouter := mux.NewRouter().StrictSlash(true)
 	myRouter.HandleFunc("/", homePage)
-	myRouter.HandleFunc("/albums", returnAllAlbums)
+	myRouter.HandleFunc("/albums", handlerReturnAllAlbums)
+	myRouter.HandleFunc("/albums/{id}", returnSingleAlbum)
 	log.Fatal(http.ListenAndServe(":8080", myRouter))
 }
 
@@ -130,13 +131,14 @@ func homePage(w http.ResponseWriter, r *http.Request) {
 	fmt.Println("Endpoint: Home Page")
 }
 
-func returnAllAlbums(w http.ResponseWriter, r *http.Request) {
+//returns slice of all albums in DB
+func returnAllAlbums() []Album {
 	// An albums slice to hold data from returned rows.
 	var albums []Album
 	rows, err := db.Query("SELECT * FROM album;")
 	if err != nil {
 		_ = fmt.Errorf("returnAllAlbums: %v", err)
-		return
+		return nil
 	}
 	defer rows.Close()
 	// Loop through rows, using Scan to assign column data to struct fields.
@@ -144,16 +146,32 @@ func returnAllAlbums(w http.ResponseWriter, r *http.Request) {
 		var alb Album
 		if err := rows.Scan(&alb.ID, &alb.Title, &alb.Artist, &alb.Price); err != nil {
 			_ = fmt.Errorf("returnAllAlbums: %v", err)
-			return
+			return nil
 		}
 		albums = append(albums, alb)
 	}
 	if err := rows.Err(); err != nil {
 		_ = fmt.Errorf("returnAllAlbums: %v", err)
-		return
+		return nil
+	}
+	return albums
+}
+
+func handlerReturnAllAlbums(w http.ResponseWriter, r *http.Request) {
+	json.NewEncoder(w).Encode(returnAllAlbums())
+}
+
+func returnSingleAlbum(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	key, _ := strconv.ParseInt(vars["id"], 10, 8)
+	key32 := int32(key)
+	allAlbums := returnAllAlbums()
+	for _, singleAlbum := range allAlbums {
+		if singleAlbum.ID == key32 {
+			json.NewEncoder(w).Encode(singleAlbum)
+		}
 	}
 
-	json.NewEncoder(w).Encode(albums)
 }
 func main() {
 	//connecting to DB
