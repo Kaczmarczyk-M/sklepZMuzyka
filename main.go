@@ -112,18 +112,6 @@ func main() {
 		log.Fatal(pingErr)
 	}
 	fmt.Println("Connected!")
-	albums, err := albumsByArtist("John Coltrane")
-	if err != nil {
-		log.Fatal(err)
-	}
-	fmt.Printf("Albums found: %v\n", albums)
-
-	// Hard-code ID 2 here to test the query.
-	alb, err := albumByID(2)
-	if err != nil {
-		log.Fatal(err)
-	}
-	fmt.Printf("Album found: %v\n", alb)
 
 	// Filling database with data from stdin
 	albID, err := addAlbum(reader())
