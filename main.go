@@ -11,6 +11,7 @@ import (
 	"strconv"
 
 	"github.com/go-sql-driver/mysql"
+	"github.com/gorilla/mux"
 )
 
 type Album struct {
@@ -118,9 +119,10 @@ func connectWithDB() {
 }
 
 func handleRequests() {
-	http.HandleFunc("/", homePage)
-	http.HandleFunc("/albums", returnAllAlbums)
-	log.Fatal(http.ListenAndServe(":8080", nil))
+	myRouter := mux.NewRouter().StrictSlash(true)
+	myRouter.HandleFunc("/", homePage)
+	myRouter.HandleFunc("/albums", returnAllAlbums)
+	log.Fatal(http.ListenAndServe(":8080", myRouter))
 }
 
 func homePage(w http.ResponseWriter, r *http.Request) {
@@ -159,13 +161,5 @@ func main() {
 
 	//starting server
 	handleRequests()
-
-	// // Filling database with data from stdin
-	// albID, err := addAlbum(reader())
-	// if err != nil {
-	// 	log.Fatal(err)
-	// }
-	// //prints last ID from db
-	// fmt.Println(albID)
 
 }
