@@ -1,13 +1,12 @@
 package main
 
 import (
-	"bufio"
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"net/http"
-	"os"
 	"strconv"
 
 	"github.com/go-sql-driver/mysql"
@@ -77,32 +76,15 @@ func addAlbum(alb Album) (int64, error) {
 	return id, nil
 }
 
-//reading values from STDIN
-func reader() Album {
-	var a Album
-	reader := bufio.NewReader(os.Stdin)
-	fmt.Println("Title:")
-	Title1, _, _ := reader.ReadLine()
-	a.Title = string(Title1)
-	fmt.Println("Artist:")
-	Artist1, _, _ := reader.ReadLine()
-	a.Artist = string(Artist1)
-	fmt.Println("Price:")
-	Price1, _, _ := reader.ReadLine()
-	a.Price, _ = strconv.ParseFloat(string(Price1), 64)
-
-	return a
-}
-
 //connecting to DB
-func connectWithDB() {
+func connectWithDB(nameOfDB string) {
 	// Capture connection properties.
 	cfg := mysql.Config{
 		User:   "newuser",
 		Passwd: "password",
 		Net:    "tcp",
 		Addr:   "127.0.0.1:3306",
-		DBName: "recordings",
+		DBName: nameOfDB,
 	}
 	// Get a database handle.
 	var err error
@@ -122,7 +104,8 @@ func handleRequests() {
 	myRouter := mux.NewRouter().StrictSlash(true)
 	myRouter.HandleFunc("/", homePage)
 	myRouter.HandleFunc("/albums", handlerReturnAllAlbums)
-	myRouter.HandleFunc("/albums/{id}", returnSingleAlbum)
+	myRouter.HandleFunc("/album/{id}", returnSingleAlbum)
+	myRouter.HandleFunc("/album", createNewAlbum).Methods("POST")
 	log.Fatal(http.ListenAndServe(":8080", myRouter))
 }
 
@@ -169,13 +152,27 @@ func returnSingleAlbum(w http.ResponseWriter, r *http.Request) {
 	for _, singleAlbum := range allAlbums {
 		if singleAlbum.ID == key32 {
 			json.NewEncoder(w).Encode(singleAlbum)
+			return
 		}
 	}
+	fmt.Fprintf(w, "Album not found")
 
+}
+
+func createNewAlbum(w http.ResponseWriter, r *http.Request) {
+	reqBody, _ := ioutil.ReadAll(r.Body)
+	var album Album
+	json.Unmarshal(reqBody, &album)
+	fmt.Printf("Title: %s;\n Artist: %s;\n Price: %.2f\n", album.Title, album.Artist, album.Price)
+	idOfAlbum, err := addAlbum(album)
+	if err != nil {
+		fmt.Printf("CreateNewAlbum: %v\n", err)
+	}
+	fmt.Printf("ID of new added record: %d", idOfAlbum)
 }
 func main() {
 	//connecting to DB
-	connectWithDB()
+	connectWithDB("recordings")
 
 	//starting server
 	handleRequests()
