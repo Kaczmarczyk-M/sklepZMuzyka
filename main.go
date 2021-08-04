@@ -3,6 +3,7 @@ package main
 import (
 	"database/sql"
 	"encoding/json"
+	"flag"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -101,7 +102,11 @@ func connectWithDB(nameOfDB string) {
 }
 
 func handleRequests() {
+	var dir string
+	flag.StringVar(&dir, "dir", ".", "the directory to serve files from. Defaults to the current dir")
+	flag.Parse()
 	myRouter := mux.NewRouter().StrictSlash(true)
+	myRouter.PathPrefix("/static/").Handler(http.StripPrefix("/static/", http.FileServer(http.Dir(dir))))
 	myRouter.HandleFunc("/", homePage)
 	myRouter.HandleFunc("/albums", handlerReturnAllAlbums)
 	myRouter.HandleFunc("/album/{id}", returnSingleAlbum)
@@ -110,8 +115,13 @@ func handleRequests() {
 }
 
 func homePage(w http.ResponseWriter, r *http.Request) {
-	fmt.Fprintf(w, "Welcome!")
+	Body, err := ioutil.ReadFile("/home/michal/Code/projekt1/static/index.html")
+	if err != nil {
+		panic(err)
+	}
+	w.Write(Body)
 	fmt.Println("Endpoint: Home Page")
+
 }
 
 //returns slice of all albums in DB
@@ -163,12 +173,16 @@ func createNewAlbum(w http.ResponseWriter, r *http.Request) {
 	reqBody, _ := ioutil.ReadAll(r.Body)
 	var album Album
 	json.Unmarshal(reqBody, &album)
-	fmt.Printf("Title: %s;\n Artist: %s;\n Price: %.2f\n", album.Title, album.Artist, album.Price)
-	idOfAlbum, err := addAlbum(album)
-	if err != nil {
-		fmt.Printf("CreateNewAlbum: %v\n", err)
+	fmt.Printf(" Title: %s;\n Artist: %s;\n Price: %.2f\n", album.Title, album.Artist, album.Price)
+	if album.Title != "" && album.Artist != "" && album.Price != 0 {
+		idOfAlbum, err := addAlbum(album)
+		if err != nil {
+			fmt.Printf("CreateNewAlbum: %v\n", err)
+		}
+		fmt.Printf("ID of new added record: %d", idOfAlbum)
+	} else {
+		fmt.Println("Error input not filled")
 	}
-	fmt.Printf("ID of new added record: %d", idOfAlbum)
 }
 func main() {
 	//connecting to DB
