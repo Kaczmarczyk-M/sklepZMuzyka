@@ -4,70 +4,43 @@
 <head>
     <meta charset="utf-8"/>
     <title>Sklep</title>
-    <!-- <link rel="stylesheet" href="style.css" type="text/css"/> -->
-    <!-- <script defer src="script.js"></script> -->
-    <!-- <script src="/node_modules/dist/jquery.min.js"></script> -->
-    <script>
-        addEventListener('DOMContentLoaded', onloadCb);
-
-        // This callback will be executed when the page initially loads.
-        // See line 1 to know why
-        function onloadCb () {
-            // Grab all forms which have a method attribute
-            const forms = document.querySelectorAll('form[method]');
-            
-            // Display info of any submitted form
-            forms.forEach(function (form) {
-                form.addEventListener('submit', displayInfo);
-            });
-        };
-
-
-        function displayInfo(event) {
-            // Prevent the page from redirecting to the action attribute.
-            event.preventDefault();
-            
-            // Get the form data
-            const formData = new FormData(event.target);
-            
-            console.log(formData.entries())
-            logAsTitle('Data:');
-            for (let [key, val] of formData.entries()) {
-                console.log(`${key} \t ${val || '<Empty>'}`);
-            }
-            
-        }
-
-        function logAsTitle(str) {
-            console.log('\n' + str);
-            console.log('='.repeat(str.length));
-        }
-    </script>
-    
 </head>
-<body>
-    <div>Hej strona glowna</div>
-    <div>Wpisz atrybuty produktu, ktory chcesz dodac do koszyka:</div>
+<body style="   background-color: rgb(64, 82, 97); 
+                margin: 0 auto;
+                width: 1000px;
+                ">
     <br>
-    <form action="http://localhost:8080/album" method="POST">
+    <form id="Pierwszy" action="http://localhost:8080/newalbum" method="POST">
         <h1>POST</h1>
-            <!-- Note that the name attribute is mandatory for all form fields -->
             <label>
                 <span>Title</span>
-                <input name="Title" >
+                <input name="Title" id="Title" required>
             </label>
             <label>
                 <span>Artist</span>
-                <input name="Artist">
+                <input name="Artist" id="Artist" required>
             </label>
             <label>
                 <span>Price</span>
-                <input name="Price" required>
+                <input name="Price" id="Price" required>
             </label>
-            <!-- <label>
-                <input name="newsletter" type="checkbox">
-                <span>Sign up for newsletter</span>
-            </label> -->
+            <button type="submit">Dodaj do koszyka</button>
+    </form>
+    <br>
+    <form id="Drugi" action="http://localhost:8080/newalbum" method="POST">
+        <h1>POST</h1>
+            <label>
+                <span>Title</span>
+                <input name="Title" id="Title" required>
+            </label>
+            <label>
+                <span>Artist</span>
+                <input name="Artist" id="Artist" required>
+            </label>
+            <label>
+                <span>Price</span>
+                <input name="Price" id="Price" required>
+            </label>
             <button type="submit">Dodaj do koszyka</button>
     </form>
 </body>

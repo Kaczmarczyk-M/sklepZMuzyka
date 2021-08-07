@@ -3,9 +3,7 @@ package main
 import (
 	"database/sql"
 	"encoding/json"
-	"flag"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"net/http"
 	"strconv"
@@ -26,42 +24,41 @@ var db *sql.DB
 // var albums []Album
 
 // albumsByArtist queries for albums that have the specified artist name.
-func albumsByArtist(name string) ([]Album, error) {
-	// An albums slice to hold data from returned rows.
-	var albums []Album
-	rows, err := db.Query("SELECT * FROM album WHERE artist = ?", name)
-	if err != nil {
-		return nil, fmt.Errorf("albumsByArtist %q: %v", name, err)
-	}
-	defer rows.Close()
-	// Loop through rows, using Scan to assign column data to struct fields.
-	for rows.Next() {
-		var alb Album
-		if err := rows.Scan(&alb.ID, &alb.Title, &alb.Artist, &alb.Price); err != nil {
-			return nil, fmt.Errorf("albumsByArtist %q: %v", name, err)
-		}
-		albums = append(albums, alb)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("albumsByArtist %q: %v", name, err)
-	}
-	return albums, nil
-}
+// func albumsByArtist(name string) ([]Album, error) {
+// 	// An albums slice to hold data from returned rows.
+// 	var albums []Album
+// 	rows, err := db.Query("SELECT * FROM album WHERE artist = ?", name)
+// 	if err != nil {
+// 		return nil, fmt.Errorf("albumsByArtist %q: %v", name, err)
+// 	}
+// 	defer rows.Close()
+// 	// Loop through rows, using Scan to assign column data to struct fields.
+// 	for rows.Next() {
+// 		var alb Album
+// 		if err := rows.Scan(&alb.ID, &alb.Title, &alb.Artist, &alb.Price); err != nil {
+// 			return nil, fmt.Errorf("albumsByArtist %q: %v", name, err)
+// 		}
+// 		albums = append(albums, alb)
+// 	}
+// 	if err := rows.Err(); err != nil {
+// 		return nil, fmt.Errorf("albumsByArtist %q: %v", name, err)
+// 	}
+// 	return albums, nil
+// }
 
 // albumByID queries for the album with the specified ID.
-func albumByID(id int64) (Album, error) {
-	// An album to hold data from the returned row.
-	var alb Album
-
-	row := db.QueryRow("SELECT * FROM album WHERE id = ?", id)
-	if err := row.Scan(&alb.ID, &alb.Title, &alb.Artist, &alb.Price); err != nil {
-		if err == sql.ErrNoRows {
-			return alb, fmt.Errorf("albumsById %d: no such album", id)
-		}
-		return alb, fmt.Errorf("albumsById %d: %v", id, err)
-	}
-	return alb, nil
-}
+// func albumByID(id int64) (Album, error) {
+// 	// An album to hold data from the returned row.
+// 	var alb Album
+// 	row := db.QueryRow("SELECT * FROM album WHERE id = ?", id)
+// 	if err := row.Scan(&alb.ID, &alb.Title, &alb.Artist, &alb.Price); err != nil {
+// 		if err == sql.ErrNoRows {
+// 			return alb, fmt.Errorf("albumsById %d: no such album", id)
+// 		}
+// 		return alb, fmt.Errorf("albumsById %d: %v", id, err)
+// 	}
+// 	return alb, nil
+// }
 
 // addAlbum adds the specified album to the database,
 // returning the album ID of the new entry
@@ -98,30 +95,21 @@ func connectWithDB(nameOfDB string) {
 	if pingErr != nil {
 		log.Fatal(pingErr)
 	}
-	fmt.Println("Connected!")
+	fmt.Println("DB: Connected!")
 }
 
 func handleRequests() {
-	var dir string
-	flag.StringVar(&dir, "dir", ".", "the directory to serve files from. Defaults to the current dir")
-	flag.Parse()
 	myRouter := mux.NewRouter().StrictSlash(true)
-	myRouter.PathPrefix("/static/").Handler(http.StripPrefix("/static/", http.FileServer(http.Dir(dir))))
 	myRouter.HandleFunc("/", homePage)
 	myRouter.HandleFunc("/albums", handlerReturnAllAlbums)
 	myRouter.HandleFunc("/album/{id}", returnSingleAlbum)
-	myRouter.HandleFunc("/album", createNewAlbum).Methods("POST")
+	myRouter.HandleFunc("/newalbum", createNewAlbum).Methods("POST")
 	log.Fatal(http.ListenAndServe(":8080", myRouter))
 }
 
 func homePage(w http.ResponseWriter, r *http.Request) {
-	Body, err := ioutil.ReadFile("/home/michal/Code/projekt1/static/index.html")
-	if err != nil {
-		panic(err)
-	}
-	w.Write(Body)
 	fmt.Println("Endpoint: Home Page")
-
+	http.ServeFile(w, r, "./static/index.html")
 }
 
 //returns slice of all albums in DB
@@ -169,20 +157,28 @@ func returnSingleAlbum(w http.ResponseWriter, r *http.Request) {
 
 }
 
+//Colects data from form input and inserts values to DB
 func createNewAlbum(w http.ResponseWriter, r *http.Request) {
-	reqBody, _ := ioutil.ReadAll(r.Body)
-	var album Album
-	json.Unmarshal(reqBody, &album)
-	fmt.Printf(" Title: %s;\n Artist: %s;\n Price: %.2f\n", album.Title, album.Artist, album.Price)
-	if album.Title != "" && album.Artist != "" && album.Price != 0 {
-		idOfAlbum, err := addAlbum(album)
-		if err != nil {
-			fmt.Printf("CreateNewAlbum: %v\n", err)
+	if r.Method == "POST" {
+		r.ParseForm()
+		var album Album
+		album.Title = r.FormValue("Title")
+		album.Artist = r.FormValue("Artist")
+		album.Price, _ = strconv.ParseFloat(r.FormValue("Price"), 64)
+		if album.Title != "" && album.Artist != "" && album.Price != 0 {
+			idOfAlbum, err := addAlbum(album)
+			if err != nil {
+				fmt.Printf("CreateNewAlbum: %v\n", err)
+			}
+			fmt.Printf("ID of new added record: %d\n", idOfAlbum)
+		} else {
+			fmt.Println("Error input not filled")
 		}
-		fmt.Printf("ID of new added record: %d", idOfAlbum)
-	} else {
-		fmt.Println("Error input not filled")
+		http.Redirect(w, r, "/", http.StatusFound)
+		return
 	}
+	fmt.Fprintln(w, "Error: Only POST")
+	fmt.Println("Error: Only POST")
 }
 func main() {
 	//connecting to DB
