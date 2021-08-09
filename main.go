@@ -1,7 +1,9 @@
 package main
 
 import (
+	"crypto/rand"
 	"database/sql"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -10,6 +12,7 @@ import (
 
 	"github.com/go-sql-driver/mysql"
 	"github.com/gorilla/mux"
+	"github.com/srinathgs/mysqlstore"
 )
 
 type Album struct {
@@ -19,7 +22,35 @@ type Album struct {
 	Price  float64 `json:"Price"`
 }
 
+type Customer struct {
+	Id    int    `json:"id"`
+	Email string `json:"email"`
+	Pass  string `json:"pass"`
+}
+
 var db *sql.DB
+
+var store *mysqlstore.MySQLStore
+
+// var sessionID string
+
+func GenerateRandomBytes(n int) ([]byte, error) {
+	b := make([]byte, n)
+	_, err := rand.Read(b)
+	// Note that err == nil only if we read len(b) bytes.
+	if err != nil {
+		return nil, err
+	}
+
+	return b, nil
+}
+
+// GenerateRandomString returns a URL-safe, base64 encoded
+// securely generated random string.
+func GenerateRandomString(s int) (string, error) {
+	b, err := GenerateRandomBytes(s)
+	return base64.URLEncoding.EncodeToString(b), err
+}
 
 // var albums []Album
 
@@ -78,7 +109,7 @@ func addAlbum(alb Album) (int64, error) {
 func connectWithDB(nameOfDB string) {
 	// Capture connection properties.
 	cfg := mysql.Config{
-		User:   "newuser",
+		User:   "suser",
 		Passwd: "password",
 		Net:    "tcp",
 		Addr:   "127.0.0.1:3306",
@@ -99,17 +130,90 @@ func connectWithDB(nameOfDB string) {
 }
 
 func handleRequests() {
-	myRouter := mux.NewRouter().StrictSlash(true)
-	myRouter.HandleFunc("/", homePage)
+	myRouter := mux.NewRouter()
+	myRouter.HandleFunc("/", loginPage)
+	myRouter.HandleFunc("/home", homePage)
+	myRouter.HandleFunc("/help", help)
 	myRouter.HandleFunc("/albums", handlerReturnAllAlbums)
 	myRouter.HandleFunc("/album/{id}", returnSingleAlbum)
 	myRouter.HandleFunc("/newalbum", createNewAlbum).Methods("POST")
+	myRouter.HandleFunc("/custom", wypiszwszystkich)
 	log.Fatal(http.ListenAndServe(":8080", myRouter))
 }
 
 func homePage(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("Endpoint: Home Page")
-	http.ServeFile(w, r, "./static/index.html")
+	//returns session called  sessionID
+	session, err := store.Get(r, "sessionID")
+	if err != nil {
+		fmt.Printf("err homepage get sessionID: %v\n", err)
+	}
+	if session.Values["isLogged"] == "true" {
+		fmt.Println("Endpoint: Home Page")
+		http.ServeFile(w, r, "./static/index.html")
+		return
+	} else {
+		fmt.Println("Not logged")
+		http.Redirect(w, r, "/", http.StatusFound)
+	}
+}
+
+func help(w http.ResponseWriter, r *http.Request) {
+	a, _ := store.Get(r, "sessionID")
+	fmt.Fprintf(w, "Is logged? : %v", a.Values["isLogged"])
+
+}
+func loginPage(w http.ResponseWriter, r *http.Request) {
+	//returns session called  sessionID
+	session, err := store.Get(r, "sessionID")
+	if err != nil {
+		fmt.Printf("err loginPage: %v\n", err)
+	}
+	session.Values["isLogged"] = "false"
+	session.Save(r, w)
+	if r.Method != "POST" {
+		fmt.Println("r.method post 134")
+		http.ServeFile(w, r, "./static/log.html")
+		return
+	}
+	var customer Customer
+	customer.Email = r.FormValue("Email")
+	customer.Pass = r.FormValue("Pass")
+	var databaseUsername string
+	var databasePassword string
+	err = db.QueryRow("SELECT email, pass FROM customer WHERE email=?", customer.Email).Scan(&databaseUsername, &databasePassword)
+	if err != nil {
+		fmt.Printf("err wrong query: %v\n", err)
+		session.Values["isLogged"] = "false"
+		err = session.Save(r, w)
+		fmt.Println("Session Saved")
+		if err != nil {
+			fmt.Printf("err: session save %v\n", err)
+		}
+		http.Redirect(w, r, "/", http.StatusFound)
+		return
+	}
+	if customer.Pass == databasePassword {
+		fmt.Println("email and pass are correct")
+		session.Values["isLogged"] = "true"
+		// fmt.Printf("######## po zmianie session.Values[\"isLogged\"]: %v\n", session.Values["isLogged"])
+		err = session.Save(r, w)
+		fmt.Println("Session Saved")
+		if err != nil {
+			fmt.Printf("err: session save %v\n", err)
+		}
+		http.Redirect(w, r, "/home", http.StatusFound)
+
+	} else {
+		fmt.Println("Password is incorect")
+		session.Values["isLogged"] = "false"
+		err = session.Save(r, w)
+		fmt.Println("Session Saved")
+		if err != nil {
+			fmt.Printf("err: session save %v\n", err)
+		}
+		http.Redirect(w, r, "/", http.StatusFound)
+	}
+
 }
 
 //returns slice of all albums in DB
@@ -174,16 +278,54 @@ func createNewAlbum(w http.ResponseWriter, r *http.Request) {
 		} else {
 			fmt.Println("Error input not filled")
 		}
-		http.Redirect(w, r, "/", http.StatusFound)
+		http.Redirect(w, r, "/home", http.StatusFound)
 		return
 	}
 	fmt.Fprintln(w, "Error: Only POST")
 	fmt.Println("Error: Only POST")
 }
+
+func wypiszwszystkich(w http.ResponseWriter, r *http.Request) {
+	// fmt.Fprintf(w, "%v\n", testWypiszWszystkichUzytkownikow())
+	json.NewEncoder(w).Encode(testWypiszWszystkichUzytkownikow())
+}
+
+func testWypiszWszystkichUzytkownikow() []Customer {
+	// An albums slice to hold data from returned rows.
+	var Customers []Customer
+	rows, err := db.Query("SELECT * FROM customer;")
+	if err != nil {
+		fmt.Printf("err Querry: %v\n", err)
+		return nil
+	}
+	defer rows.Close()
+	// Loop through rows, using Scan to assign column data to struct fields.
+	for rows.Next() {
+		var cust Customer
+		if err := rows.Scan(&cust.Id, &cust.Email, &cust.Pass); err != nil {
+			fmt.Printf("error scanning: %v\n", err)
+		}
+		Customers = append(Customers, cust)
+	}
+	if err := rows.Err(); err != nil {
+		_ = fmt.Errorf("returnAllAlbums: %v", err)
+		return nil
+	}
+	return Customers
+}
 func main() {
 	//connecting to DB
-	connectWithDB("recordings")
-
+	connectWithDB("shop")
+	var err error
+	// sessionID, err = GenerateRandomString(32)
+	if err != nil {
+		panic(err)
+	}
+	store, err = mysqlstore.NewMySQLStore("suser:password@tcp(127.0.0.1:3306)/shop?parseTime=true&loc=Local", "session", "/", 3600, []byte("SecretKey"))
+	if err != nil {
+		panic(err)
+	}
+	defer store.Close()
 	//starting server
 	handleRequests()
 
