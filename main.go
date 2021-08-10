@@ -143,6 +143,7 @@ func handleRequests() {
 	myRouter.HandleFunc("/home", homePage)
 	myRouter.HandleFunc("/makeorder", makeorder)
 	myRouter.HandleFunc("/help", help)
+	myRouter.HandleFunc("/orders", viewOrders)
 	myRouter.HandleFunc("/albums", handlerReturnAllAlbums)
 	myRouter.HandleFunc("/album/{id}", returnSingleAlbum)
 	myRouter.HandleFunc("/newalbum", createNewAlbum).Methods("POST")
@@ -170,7 +171,8 @@ func homePage(w http.ResponseWriter, r *http.Request) {
 func help(w http.ResponseWriter, r *http.Request) {
 	a, _ := store.Get(r, "sessionID")
 	fmt.Fprintf(w, "Is logged? : %v", a.Values["isLogged"])
-
+	fmt.Fprintf(w, "a.Values[\"email\"]: %v\n", a.Values["custemail"])
+	fmt.Fprintf(w, "a.Values[\"custid\"]: %v\n", a.Values["custid"])
 }
 func loginPage(w http.ResponseWriter, r *http.Request) {
 	//returns session called  sessionID
@@ -233,6 +235,11 @@ func makeorder(w http.ResponseWriter, r *http.Request) {
 		// var order Orders
 		//returns session called  sessionID
 		session, err := store.Get(r, "sessionID")
+		if session.Values["isLogged"] != "true" {
+			fmt.Println("Failed attempt to see makeorder")
+			http.Redirect(w, r, "/", http.StatusFound)
+			return
+		}
 		fmt.Printf("session.Values at makeorder: %v | %v | %v | %v\n", session.Values["custid"], session.Values["custemail"], session.Values["isLogged"], session.Values["expires_on"])
 		if err != nil {
 			fmt.Printf("err homepage get sessionID: %v\n", err)
@@ -244,22 +251,18 @@ func makeorder(w http.ResponseWriter, r *http.Request) {
 		for i := 0; i < 4; i++ {
 			a, _ = strconv.Atoi(r.Form.Get("AM"))
 			if int32(a) == albums[i].ID {
-				fmt.Println("AM correct")
 				whatsinorder = append(whatsinorder, albums[i])
 			}
 			a, _ = strconv.Atoi(r.Form.Get("PF"))
 			if int32(a) == albums[i].ID {
-				fmt.Println("PF correct")
 				whatsinorder = append(whatsinorder, albums[i])
 			}
 			a, _ = strconv.Atoi(r.Form.Get("LZ"))
 			if int32(a) == albums[i].ID {
-				fmt.Println("LZ correct")
 				whatsinorder = append(whatsinorder, albums[i])
 			}
 			a, _ = strconv.Atoi(r.Form.Get("RS"))
 			if int32(a) == albums[i].ID {
-				fmt.Println("RS correct")
 				whatsinorder = append(whatsinorder, albums[i])
 			}
 
@@ -273,6 +276,8 @@ func makeorder(w http.ResponseWriter, r *http.Request) {
 			}
 			fmt.Println(id)
 		}
+		http.Redirect(w, r, "/orders", http.StatusFound)
+		return
 
 	} else {
 		fmt.Fprint(w, "Only POST")
@@ -292,6 +297,43 @@ func addNewOrder(productid int, customerid interface{}) (int64, error) {
 		return 0, fmt.Errorf("addAlbum last insert: %v", err)
 	}
 	return id, nil
+}
+
+func viewOrders(w http.ResponseWriter, r *http.Request) {
+	session, err := store.Get(r, "sessionID")
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	if session.Values["isLogged"] != "true" {
+		fmt.Println("Failed attempt to see viewOrders")
+		http.Redirect(w, r, "/", http.StatusFound)
+		return
+	}
+	fmt.Printf("session.Values[\"custid\"]: %v\n", session.Values["custid"])
+	rows, err := db.Query("select * from orders where customerid = ?", session.Values["custid"])
+	if err != nil {
+		fmt.Printf("err Querry: %v\n", err)
+		return
+	}
+	defer rows.Close()
+	var orders []Orders
+	// Loop through rows, using Scan to assign column data to struct fields.
+	for rows.Next() {
+		var ord Orders
+		if err := rows.Scan(&ord.Id, &ord.Productid, &ord.Customerid, &ord.Timeunix); err != nil {
+			_ = fmt.Errorf("returnAllAlbums: %v", err)
+		}
+		orders = append(orders, ord)
+	}
+	if err := rows.Err(); err != nil {
+		fmt.Println(err)
+		return
+	}
+	for _, record := range orders {
+		fmt.Fprintf(w, "IDorder: %v, ProductID: %v, ", record.Id, record.Productid)
+		fmt.Fprintln(w, record.Timeunix)
+	}
 }
 
 //returns slice of all albums in DB
