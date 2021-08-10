@@ -144,6 +144,7 @@ func handleRequests() {
 func homePage(w http.ResponseWriter, r *http.Request) {
 	//returns session called  sessionID
 	session, err := store.Get(r, "sessionID")
+	fmt.Printf("session.Values: %v | %v | %v | %v\n", session.Values["custid"], session.Values["custemail"], session.Values["isLogged"], session.Values["expires_on"])
 	if err != nil {
 		fmt.Printf("err homepage get sessionID: %v\n", err)
 	}
@@ -168,6 +169,7 @@ func loginPage(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		fmt.Printf("err loginPage: %v\n", err)
 	}
+	//log out
 	session.Values["isLogged"] = "false"
 	session.Save(r, w)
 	if r.Method != "POST" {
@@ -178,9 +180,10 @@ func loginPage(w http.ResponseWriter, r *http.Request) {
 	var customer Customer
 	customer.Email = r.FormValue("Email")
 	customer.Pass = r.FormValue("Pass")
+	var databaseId int
 	var databaseUsername string
 	var databasePassword string
-	err = db.QueryRow("SELECT email, pass FROM customer WHERE email=?", customer.Email).Scan(&databaseUsername, &databasePassword)
+	err = db.QueryRow("SELECT customerid, email, pass FROM customer WHERE email=?", customer.Email).Scan(&databaseId, &databaseUsername, &databasePassword)
 	if err != nil {
 		fmt.Printf("err wrong query: %v\n", err)
 		session.Values["isLogged"] = "false"
@@ -194,10 +197,11 @@ func loginPage(w http.ResponseWriter, r *http.Request) {
 	}
 	if customer.Pass == databasePassword {
 		fmt.Println("email and pass are correct")
+		session.Values["custid"] = databaseId
+		session.Values["custemail"] = customer.Email
 		session.Values["isLogged"] = "true"
-		// fmt.Printf("######## po zmianie session.Values[\"isLogged\"]: %v\n", session.Values["isLogged"])
-		err = session.Save(r, w)
 		fmt.Println("Session Saved")
+		err = session.Save(r, w)
 		if err != nil {
 			fmt.Printf("err: session save %v\n", err)
 		}
@@ -317,11 +321,11 @@ func main() {
 	//connecting to DB
 	connectWithDB("shop")
 	var err error
-	// sessionID, err = GenerateRandomString(32)
+	// sessionID, err = GenerateRandomString(8)
 	if err != nil {
 		panic(err)
 	}
-	store, err = mysqlstore.NewMySQLStore("suser:password@tcp(127.0.0.1:3306)/shop?parseTime=true&loc=Local", "session", "/", 3600, []byte("SecretKey"))
+	store, err = mysqlstore.NewMySQLStore("suser:password@tcp(127.0.0.1:3306)/shop?parseTime=true&loc=Local", "session", "/", 600, []byte("SecretKey"))
 	if err != nil {
 		panic(err)
 	}
