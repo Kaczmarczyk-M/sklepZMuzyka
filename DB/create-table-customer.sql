@@ -10,4 +10,5 @@ CREATE TABLE customer (
 INSERT INTO customer
     (email,pass)
 VALUES 
-  ('m01kaczmarczyk@gmail.com', 'qwerty');
+  ('m01kaczmarczyk@gmail.com', 'qwerty'),
+  ('sample@gmail.com', 'haslo123');

@@ -4,44 +4,105 @@
 <head>
     <meta charset="utf-8"/>
     <title>Sklep</title>
+    <style>
+        body {
+            background-color: rgb(64, 82, 97); 
+            margin: 0 auto;
+            width: 1000px;
+        }
+        .formid {
+            display: grid;
+            grid-template-columns: auto auto auto;
+            grid-gap: 10px;
+            padding: 10px;
+        }
+        .formid > div{
+            background-color: cornflowerblue;
+            text-align: center;
+            font-size: 30px;
+        }
+        #buttonid {
+            grid-column: 2/3;
+        }
+        .formid > .item3 input[type="checkbox"] {
+            vertical-align: middle;
+        }
+        .formid > .item3 > .checkmark {
+            height: 25px;
+            width: 25px;
+            background-color: #eee;
+            }
+    </style>
 </head>
-<body style="   background-color: rgb(64, 82, 97); 
-                margin: 0 auto;
-                width: 1000px;
-                ">
+<body>
     <br>
-    <form id="Pierwszy" action="http://localhost:8080/newalbum" method="POST">
-        <h1>POST</h1>
-            <label>
-                <span>Title</span>
-                <input name="Title" id="Title" required>
-            </label>
-            <label>
-                <span>Artist</span>
-                <input name="Artist" id="Artist" required>
-            </label>
-            <label>
-                <span>Price</span>
-                <input name="Price" id="Price" required>
-            </label>
-            <button type="submit">Dodaj do koszyka</button>
+    <form class="formid" action="http://localhost:8080/makeorder" method="POST">
+        <div class="item1">
+            <div>p</div>
+            <div>i</div>
+            <div>c</div>
+        </div>
+        
+        <div class="item2">
+            Title: Favourite Worst Nightmare<br>
+            Artist: Arctic Monkeys<br>
+            Price: 39.99
+        </div>
+        <div class="item3">
+            <input name="AM" type="checkbox" value="1" >
+            <!-- <input name="AMTitle" type="checkbox" value="Favourite Worst Nightmare" >
+            <input name="AMArtist" type="hidden" value="Arctic Monkeys">
+            <input name="AMPrice" type="hidden" value="39.99"> -->
+        </div>
+        <!-- New row -->
+        <div class="item1">
+            <div>p</div>
+            <div>i</div>
+            <div>c</div>
+        </div>
+        
+        <div class="item2">
+            Title: The Wall<br>
+            Artist: Pink Floyd<br>
+            Price: 29.99
+        </div>
+        <div class="item3">
+            <input name="PF" type="checkbox" value="2">
+        </div>
+        <!-- New row -->
+        <div class="item1">
+            <div>p</div>
+            <div>i</div>
+            <div>c</div>
+        </div>
+        
+        <div class="item2">
+            Title: Led Zeppelin III<br>
+            Artist: Led Zeppelin<br>
+            Price: 45.00
+        </div>
+        <div class="item3">
+            <input name="LZ" type="checkbox" value="3">
+        </div>
+        <!-- New row -->
+        <div class="item1">
+            <div>p</div>
+            <div>i</div>
+            <div>c</div>
+        </div>
+        
+        <div class="item2">
+            Title: Sticky Fingers<br>
+            Artist: The Rolling Stones<br>
+            Price: 39.99
+        </div>
+        <div class="item3">
+            <input name="RS" type="checkbox" value="4">
+        </div>
+        
+        <button id="buttonid" type="submit">Order</button>
     </form>
     <br>
-    <form id="Drugi" action="http://localhost:8080/newalbum" method="POST">
-        <h1>POST</h1>
-            <label>
-                <span>Title</span>
-                <input name="Title" id="Title" required>
-            </label>
-            <label>
-                <span>Artist</span>
-                <input name="Artist" id="Artist" required>
-            </label>
-            <label>
-                <span>Price</span>
-                <input name="Price" id="Price" required>
-            </label>
-            <button type="submit">Dodaj do koszyka</button>
-    </form>
+    
 </body>
 </html>

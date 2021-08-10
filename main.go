@@ -9,6 +9,7 @@ import (
 	"log"
 	"net/http"
 	"strconv"
+	"time"
 
 	"github.com/go-sql-driver/mysql"
 	"github.com/gorilla/mux"
@@ -26,6 +27,13 @@ type Customer struct {
 	Id    int    `json:"id"`
 	Email string `json:"email"`
 	Pass  string `json:"pass"`
+}
+
+type Orders struct {
+	Id         int
+	Productid  int
+	Customerid int
+	Timeunix   int64
 }
 
 var db *sql.DB
@@ -94,7 +102,7 @@ func GenerateRandomString(s int) (string, error) {
 // addAlbum adds the specified album to the database,
 // returning the album ID of the new entry
 func addAlbum(alb Album) (int64, error) {
-	result, err := db.Exec("INSERT INTO album (title, artist, price) VALUES (?, ?, ?)", alb.Title, alb.Artist, alb.Price)
+	result, err := db.Exec("INSERT INTO product (title, artist, price) VALUES (?, ?, ?)", alb.Title, alb.Artist, alb.Price)
 	if err != nil {
 		return 0, fmt.Errorf("addAlbum: %v", err)
 	}
@@ -133,6 +141,7 @@ func handleRequests() {
 	myRouter := mux.NewRouter()
 	myRouter.HandleFunc("/", loginPage)
 	myRouter.HandleFunc("/home", homePage)
+	myRouter.HandleFunc("/makeorder", makeorder)
 	myRouter.HandleFunc("/help", help)
 	myRouter.HandleFunc("/albums", handlerReturnAllAlbums)
 	myRouter.HandleFunc("/album/{id}", returnSingleAlbum)
@@ -217,14 +226,79 @@ func loginPage(w http.ResponseWriter, r *http.Request) {
 		}
 		http.Redirect(w, r, "/", http.StatusFound)
 	}
+}
 
+func makeorder(w http.ResponseWriter, r *http.Request) {
+	if r.Method == "POST" {
+		// var order Orders
+		//returns session called  sessionID
+		session, err := store.Get(r, "sessionID")
+		fmt.Printf("session.Values at makeorder: %v | %v | %v | %v\n", session.Values["custid"], session.Values["custemail"], session.Values["isLogged"], session.Values["expires_on"])
+		if err != nil {
+			fmt.Printf("err homepage get sessionID: %v\n", err)
+		}
+		var whatsinorder []Album
+		r.ParseForm()
+		albums := returnAllAlbums()
+		var a int
+		for i := 0; i < 4; i++ {
+			a, _ = strconv.Atoi(r.Form.Get("AM"))
+			if int32(a) == albums[i].ID {
+				fmt.Println("AM correct")
+				whatsinorder = append(whatsinorder, albums[i])
+			}
+			a, _ = strconv.Atoi(r.Form.Get("PF"))
+			if int32(a) == albums[i].ID {
+				fmt.Println("PF correct")
+				whatsinorder = append(whatsinorder, albums[i])
+			}
+			a, _ = strconv.Atoi(r.Form.Get("LZ"))
+			if int32(a) == albums[i].ID {
+				fmt.Println("LZ correct")
+				whatsinorder = append(whatsinorder, albums[i])
+			}
+			a, _ = strconv.Atoi(r.Form.Get("RS"))
+			if int32(a) == albums[i].ID {
+				fmt.Println("RS correct")
+				whatsinorder = append(whatsinorder, albums[i])
+			}
+
+		}
+		fmt.Printf("whatsinorder: %v\n", whatsinorder)
+		for _, number := range whatsinorder {
+			id, err := addNewOrder(int(number.ID), session.Values["custid"])
+			if err != nil {
+				fmt.Println(err)
+				return
+			}
+			fmt.Println(id)
+		}
+
+	} else {
+		fmt.Fprint(w, "Only POST")
+		return
+	}
+}
+
+const createdFormat = "2006-01-02 15:04:05" //"Jan 2, 2006 at 3:04pm (MST)"
+
+func addNewOrder(productid int, customerid interface{}) (int64, error) {
+	result, err := db.Exec("INSERT INTO orders (productid, customerid, timeunix) VALUES (?, ?, ?)", productid, customerid, time.Unix(time.Now().Unix(), 0).Format(createdFormat))
+	if err != nil {
+		return 0, fmt.Errorf("addAlbum exec: %v", err)
+	}
+	id, err := result.LastInsertId()
+	if err != nil {
+		return 0, fmt.Errorf("addAlbum last insert: %v", err)
+	}
+	return id, nil
 }
 
 //returns slice of all albums in DB
 func returnAllAlbums() []Album {
 	// An albums slice to hold data from returned rows.
 	var albums []Album
-	rows, err := db.Query("SELECT * FROM album;")
+	rows, err := db.Query("SELECT * FROM product;")
 	if err != nil {
 		_ = fmt.Errorf("returnAllAlbums: %v", err)
 		return nil
