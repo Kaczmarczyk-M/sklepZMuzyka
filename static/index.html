@@ -4,11 +4,19 @@
 <head>
     <meta charset="utf-8"/>
     <title>Sklep</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Lato:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
     <style>
         body {
-            background-color: rgb(64, 82, 97); 
+            background-color: #2b9183; 
             margin: 0 auto;
+            font-size: 20px;
             width: 1000px;
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%,-50%);
         }
         .formid {
             display: grid;
@@ -17,12 +25,21 @@
             padding: 10px;
         }
         .formid > div{
-            background-color: cornflowerblue;
+            background-color: #E8A87C;
             text-align: center;
             font-size: 30px;
+            border-radius: 10px 10px 10px 10px;
+            -webkit-box-shadow: 0px 0px 12px -1px rgba(0,0,0,0.75);
+            -moz-box-shadow: 0px 0px 12px -1px rgba(0,0,0,0.75);
+            box-shadow: 0px 0px 12px -1px rgba(0,0,0,0.75);
         }
         #buttonid {
             grid-column: 2/3;
+            border-radius: 5px 5px 5px 5px;
+            border-radius: 1px solid #000;
+            margin: 10px 0px;
+            padding-top: 5px;
+            padding-bottom: 5px;
         }
         .formid > .item3 input[type="checkbox"] {
             vertical-align: middle;
