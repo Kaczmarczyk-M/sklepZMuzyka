@@ -140,6 +140,7 @@ func connectWithDB(nameOfDB string) {
 func handleRequests() {
 	myRouter := mux.NewRouter()
 	myRouter.HandleFunc("/", loginPage)
+	myRouter.HandleFunc("/register", registerPage)
 	myRouter.HandleFunc("/home", homePage)
 	myRouter.HandleFunc("/makeorder", makeorder)
 	myRouter.HandleFunc("/help", help)
@@ -147,7 +148,7 @@ func handleRequests() {
 	myRouter.HandleFunc("/albums", handlerReturnAllAlbums)
 	myRouter.HandleFunc("/album/{id}", returnSingleAlbum)
 	myRouter.HandleFunc("/newalbum", createNewAlbum).Methods("POST")
-	myRouter.HandleFunc("/custom", wypiszwszystkich)
+	myRouter.HandleFunc("/custom", wypiszwszystkich) //musi byc prywatne
 	log.Fatal(http.ListenAndServe(":8080", myRouter))
 }
 
@@ -189,45 +190,92 @@ func loginPage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var customer Customer
-	customer.Email = r.FormValue("Email")
-	customer.Pass = r.FormValue("Pass")
-	var databaseId int
-	var databaseUsername string
-	var databasePassword string
-	err = db.QueryRow("SELECT customerid, email, pass FROM customer WHERE email=?", customer.Email).Scan(&databaseId, &databaseUsername, &databasePassword)
-	if err != nil {
-		fmt.Printf("err wrong query: %v\n", err)
-		session.Values["isLogged"] = "false"
-		err = session.Save(r, w)
-		fmt.Println("Session Saved")
+	r.ParseForm()
+	if r.FormValue("Email") != "" && r.FormValue("Pass") != "" {
+		customer.Email = r.FormValue("Email")
+		customer.Pass = r.FormValue("Pass")
+		var databaseId int
+		var databaseUsername string
+		var databasePassword string
+		err = db.QueryRow("SELECT customerid, email, pass FROM customer WHERE email=?", customer.Email).Scan(&databaseId, &databaseUsername, &databasePassword)
 		if err != nil {
-			fmt.Printf("err: session save %v\n", err)
+			fmt.Printf("err wrong query: %v\n", err)
+			session.Values["isLogged"] = "false"
+			err = session.Save(r, w)
+			fmt.Println("Session Saved")
+			if err != nil {
+				fmt.Printf("err: session save %v\n", err)
+			}
+			http.Redirect(w, r, "/", http.StatusFound)
+			return
 		}
+		if customer.Pass == databasePassword {
+			fmt.Println("email and pass are correct")
+			session.Values["custid"] = databaseId
+			session.Values["custemail"] = customer.Email
+			session.Values["isLogged"] = "true"
+			fmt.Println("Session Saved")
+			err = session.Save(r, w)
+			if err != nil {
+				fmt.Printf("err: session save %v\n", err)
+			}
+			http.Redirect(w, r, "/home", http.StatusFound)
+
+		} else {
+			fmt.Println("Password is incorect")
+			session.Values["isLogged"] = "false"
+			err = session.Save(r, w)
+			fmt.Println("Session Saved")
+			if err != nil {
+				fmt.Printf("err: session save %v\n", err)
+			}
+			http.Redirect(w, r, "/", http.StatusFound)
+		}
+	}
+	if r.FormValue("reg") == "reg" {
+		http.Redirect(w, r, "/register", http.StatusFound)
+		return
+	}
+
+}
+
+func registerPage(w http.ResponseWriter, r *http.Request) {
+	//returns session called  sessionID
+	session, err := store.Get(r, "sessionID")
+	if err != nil {
+		fmt.Printf("err homepage get sessionID: %v\n", err)
+	}
+	if r.Method != "POST" {
+		fmt.Println("Endpoint: Register Page")
+		http.ServeFile(w, r, "./static/reg.html")
+		return
+	}
+	var customer Customer
+	r.ParseForm()
+	if r.FormValue("Email") != "" && r.FormValue("Pass") != "" {
+		customer.Email = r.FormValue("Email")
+		customer.Pass = r.FormValue("Pass")
+		_, err = db.Exec("INSERT INTO customer (email, pass) values (?, ?)", customer.Email, customer.Pass)
+		if err != nil {
+			fmt.Printf("err wrong insert: %v\n", err)
+			session.Values["isLogged"] = "false"
+			err = session.Save(r, w)
+			fmt.Println("Session Saved")
+			if err != nil {
+				fmt.Printf("err: session save %v\n", err)
+			}
+			http.Redirect(w, r, "/register", http.StatusFound)
+			return
+		}
+
 		http.Redirect(w, r, "/", http.StatusFound)
 		return
 	}
-	if customer.Pass == databasePassword {
-		fmt.Println("email and pass are correct")
-		session.Values["custid"] = databaseId
-		session.Values["custemail"] = customer.Email
-		session.Values["isLogged"] = "true"
-		fmt.Println("Session Saved")
-		err = session.Save(r, w)
-		if err != nil {
-			fmt.Printf("err: session save %v\n", err)
-		}
-		http.Redirect(w, r, "/home", http.StatusFound)
-
-	} else {
-		fmt.Println("Password is incorect")
-		session.Values["isLogged"] = "false"
-		err = session.Save(r, w)
-		fmt.Println("Session Saved")
-		if err != nil {
-			fmt.Printf("err: session save %v\n", err)
-		}
+	if r.FormValue("log") == "log" {
 		http.Redirect(w, r, "/", http.StatusFound)
+		return
 	}
+
 }
 
 func makeorder(w http.ResponseWriter, r *http.Request) {
